@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationManagerCompat
 
+const val SCREEN_CAPTURE_FOREGROUND_ID = 1
 const val SCREEN_CAPTURE_CHANNEL_ID = "channel_screen_capture"
 const val SCREEN_CAPTURE_CHANNEL_NAME = "屏幕捕获"
 

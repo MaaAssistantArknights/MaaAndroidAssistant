@@ -1,13 +1,19 @@
 package plus.maa.android.assistant
 
+import android.content.ComponentName
+import android.content.ServiceConnection
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.widget.TextView
+import android.os.IBinder
 import plus.maa.android.assistant.databinding.ActivityMainBinding
+import plus.maa.android.assistant.support.createScreenCaptureLauncher
+import plus.maa.android.assistant.support.launchScreenCapture
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+
+    private var scsBinder: ScreenCaptureService.Binder? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -15,10 +21,18 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Example of a call to a native method
-        binding.sampleText.text = stringFromJNI()
+        val screenCaptureLauncher = createScreenCaptureLauncher(object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName, service: IBinder) {
+                scsBinder = service as ScreenCaptureService.Binder
+            }
 
+            override fun onServiceDisconnected(name: ComponentName) {
+            }
+        })
 
+        binding.btnScreenCapture.setOnClickListener {
+            launchScreenCapture(screenCaptureLauncher)
+        }
     }
 
     /**
