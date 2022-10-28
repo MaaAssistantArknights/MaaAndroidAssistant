@@ -2,10 +2,13 @@ package plus.maa.android.assistant
 
 import android.content.ComponentName
 import android.content.ServiceConnection
+import android.graphics.BitmapFactory
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.IBinder
+import android.util.Log
 import plus.maa.android.assistant.databinding.ActivityMainBinding
+import plus.maa.android.assistant.support.createBMP
 import plus.maa.android.assistant.support.createScreenCaptureLauncher
 import plus.maa.android.assistant.support.launchScreenCapture
 
@@ -24,6 +27,13 @@ class MainActivity : AppCompatActivity() {
         val screenCaptureLauncher = createScreenCaptureLauncher(object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName, service: IBinder) {
                 scsBinder = service as ScreenCaptureService.Binder
+
+                scsBinder?.captureScreen { width, height, byteArray ->
+                    val bmp = createBMP(width, height, byteArray)
+                    val bitmap = BitmapFactory.decodeByteArray(bmp, 0, bmp.size)
+
+                    Log.e("", "")
+                }
             }
 
             override fun onServiceDisconnected(name: ComponentName) {
