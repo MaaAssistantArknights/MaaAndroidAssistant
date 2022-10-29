@@ -2,26 +2,21 @@ package plus.maa.android.assistant
 
 import android.annotation.SuppressLint
 import android.app.Service
-import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.ImageReader
 import android.media.projection.MediaProjection
-import android.media.projection.MediaProjectionManager
-import android.os.Binder
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import plus.maa.android.assistant.notification.channel.SCREEN_CAPTURE_CHANNEL_ID
 import plus.maa.android.assistant.notification.channel.SCREEN_CAPTURE_FOREGROUND_ID
 import plus.maa.android.assistant.support.getMediaProjection
 import plus.maa.android.assistant.support.getScreenSize
+import kotlin.math.min
 
 class ScreenCaptureService : Service() {
 
@@ -43,23 +38,30 @@ class ScreenCaptureService : Service() {
         Handler(irHandlerThread.looper)
     }
 
-    inner class Binder : android.os.Binder() {
+    inner class Controller : android.os.Binder() {
         fun captureScreen(callback: (width: Int, height: Int, byteArray: ByteArray) -> Unit) {
             irHandler.post {
-                val image = imageReader?.acquireLatestImage() ?: return@post
+                val image = imageReader?.acquireLatestImage()
 
-                val width = image.width
-                val height = image.height
+                if (image == null) {
+                    callback(0, 0, ByteArray(0))
+                    return@post
+                }
+
                 val planes = image.planes
                 val buffer = planes[0].buffer
-                val pixelStride = planes[0].pixelStride
-                val rowStride = planes[0].rowStride
-                val rowPadding = rowStride - pixelStride * width
 
                 val byteArray = ByteArray(buffer.remaining())
                 buffer.get(byteArray, 0, byteArray.size)
 
-                callback(width + rowPadding / pixelStride, height, byteArray)
+                val height = image.height
+                val width = byteArray.size / height / 4
+
+//                val pixelStride = planes[0].pixelStride
+//                val rowStride = planes[0].rowStride
+//                val rowPadding = rowStride - pixelStride * width
+
+                callback(width, height, byteArray)
 
                 image.close()
             }
@@ -67,7 +69,7 @@ class ScreenCaptureService : Service() {
     }
 
     override fun onBind(intent: Intent): IBinder {
-        return Binder()
+        return Controller()
     }
 
     override fun onCreate() {
@@ -86,9 +88,19 @@ class ScreenCaptureService : Service() {
 
         val screenSize = getScreenSize()
 
+        val minSize = min(screenSize.width(), screenSize.height())
+        val proportion = if (minSize > 720) {
+            720.toDouble() / minSize
+        } else {
+            1.0
+        }
+
+        val width = (proportion * screenSize.width()).toInt()
+        val height = (proportion * screenSize.height()).toInt()
+
         imageReader = ImageReader.newInstance(
-            screenSize.width(),
-            screenSize.height(),
+            width,
+            height,
             PixelFormat.RGBA_8888,
             2
         )
@@ -98,8 +110,8 @@ class ScreenCaptureService : Service() {
 
         virtualDisplay = mp.createVirtualDisplay(
             "ScreenCapture",
-            screenSize.width(),
-            screenSize.height(),
+            width,
+            height,
             resources.displayMetrics.densityDpi,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
             imageReader!!.surface,
