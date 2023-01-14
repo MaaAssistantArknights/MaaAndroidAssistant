@@ -3,6 +3,7 @@ package plus.maa.android.assistant
 import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -16,6 +17,7 @@ import plus.maa.android.assistant.notification.channel.SCREEN_CAPTURE_CHANNEL_ID
 import plus.maa.android.assistant.notification.channel.SCREEN_CAPTURE_FOREGROUND_ID
 import plus.maa.android.assistant.support.getMediaProjection
 import plus.maa.android.assistant.support.getScreenSize
+import java.nio.ByteBuffer
 import kotlin.math.min
 
 class ScreenCaptureService : Service() {
@@ -118,6 +120,24 @@ class ScreenCaptureService : Service() {
             null,
             vdHandler
         )
+
+        imageReader?.setOnImageAvailableListener({ reader ->
+            val image = reader.acquireLatestImage()
+
+            val planes = image.planes
+            val buffer = planes[0].buffer
+
+            val byteArray = ByteArray(buffer.remaining())
+            buffer.get(byteArray, 0, byteArray.size)
+
+            val h = image.height
+            val w = byteArray.size / h / 4
+
+            val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(byteArray))
+
+            image.close()
+        }, null)
 
         return super.onStartCommand(intent, flags, startId)
     }
